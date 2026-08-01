@@ -7,6 +7,7 @@ const { v4: uuidv4 } = require('uuid');
 const { downloadVideo } = require('./services/youtube');
 const { convertToFormat } = require('./services/ffmpeg');
 const { cleanupJobFiles } = require('./services/cleanup');
+const { addToQueue, getQueuePosition } = require('./services/queue');
 const config = require('./config');
 const logger = require('./services/logger');
 
@@ -41,14 +42,14 @@ app.post('/api/convert', (req, res) => {
     format,
     quality,
     progress: 0,
-    status: 'Starting...',
+    status: 'Queued...',
     complete: false,
     error: null,
     filePath: null,
     originalFilePath: null
   };
 
-  processJob(jobId);
+  addToQueue(jobId, processJob);
 
   res.json({ jobId });
 });
@@ -75,7 +76,8 @@ app.get('/api/progress/:jobId', (req, res) => {
       status: job.status,
       complete: job.complete,
       error: job.error,
-      jobId: job.id
+      jobId: job.id,
+      queuePosition: getQueuePosition(jobId)
     };
 
     res.write(`data: ${JSON.stringify(data)}\n\n`);
