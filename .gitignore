@@ -1,0 +1,20 @@
+# Ignore all local environment variables
+.env
+
+# Ignore all log files
+*.log
+
+# Ignore build output
+dist/
+
+# Ignore node_modules
+node_modules/
+
+# Ignore temp files
+server/temp/
+
+# Ignore macOS files
+.DS_Store
+
+# Ignore editor settings
+.vscode/
