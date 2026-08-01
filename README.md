@@ -52,6 +52,7 @@ npm run dev
 Open:
 
 http://localhost:5173
+- Or whatever localhost the frontend terminal shows
 
 ## Notes
 
