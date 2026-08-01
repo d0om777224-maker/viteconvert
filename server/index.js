@@ -6,20 +6,23 @@ const { v4: uuidv4 } = require('uuid');
 
 const { downloadVideo } = require('./services/youtube');
 const { convertToFormat } = require('./services/ffmpeg');
+const { cleanupJobFiles } = require('./services/cleanup');
+const config = require('./config');
+const logger = require('./services/logger');
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
-const PORT = 3001;
+const PORT = config.PORT;
 
 const jobs = {};
 
 
 // Start conversion
 app.post('/api/convert', (req, res) => {
-  console.log("Conversion request:", req.body);
+  logger.info("Conversion request:", req.body);
   let { url, format = 'mp4', quality = 'best' } = req.body;
 
   if (format === 'mp3') {
@@ -174,36 +177,27 @@ async function processJob(jobId) {
     job.complete = true;
 
 
-    console.log(`Job ${jobId} finished: ${outputFilePath}`);
+    logger.info(`Job ${jobId} finished: ${outputFilePath}`);
 
 
     // Cleanup after 10 minutes
     setTimeout(() => {
-      try {
-        if (job.filePath && fs.existsSync(job.filePath)) {
-          fs.unlinkSync(job.filePath);
-          console.log(`Deleted converted file: ${job.filePath}`);
-        }
-
-        if (job.originalFilePath && fs.existsSync(job.originalFilePath)) {
-          fs.unlinkSync(job.originalFilePath);
-          console.log(`Deleted original file: ${job.originalFilePath}`);
-        }
-
-        delete jobs[jobId];
-        console.log(`Cleaned up job: ${jobId}`);
-      } catch (err) {
-        console.error("Cleanup error:", err.message);
-      }
-    }, 10 * 60 * 1000);
+      cleanupJobFiles(job);
+      delete jobs[jobId];
+      console.log(`Cleaned up job: ${jobId}`);
+    }, config.CLEANUP_DELAY_MS);
 
 
   } catch (error) {
 
-    console.error(`Job ${jobId} failed:`, error);
+    logger.error(`Job ${jobId} failed:`, error);
 
     job.error = error.message;
     job.status = 'Error';
+    
+    // Cleanup on failure
+    cleanupJobFiles(job);
+    delete jobs[jobId];
   }
 }
 
