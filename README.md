@@ -1,61 +1,52 @@
 # ViteConvert
 
-A local video/audio converter powered by yt-dlp and FFmpeg.
+A secure, high-performance full-stack web application that converts YouTube videos into downloadable MP3 or MP4 files.
 
 ## Features
-
-- Convert YouTube videos to MP4
-- Extract audio as MP3
-- Quality selection
-- Real-time conversion progress
-- Automatic temporary file cleanup
-- Local processing (files stay on your computer)
+- **Secure Processing**: Implements helmet security headers, CORS, and strict input validation.
+- **Reliable Performance**: Uses a task queue to prevent server overload.
+- **Automated Management**: Automatic temporary file cleanup.
+- **Modern UI**: Clean, responsive, and dark-themed interface.
+- **Container-Ready**: Includes Docker support for easy deployment.
 
 ## Requirements
-
-Before running, install:
-
-- Node.js
+- Node.js (v20+)
 - FFmpeg
 - yt-dlp
 
 ## Installation
-
-Clone the repository:
-
+```bash
 git clone <your-repo-url>
-
-Enter the project:
-
 cd viteconvert
 
-Install dependencies:
-
+# Install backend dependencies
 cd server
 npm install
+npm install helmet express-rate-limit
 
+# Install frontend dependencies
 cd ../client
 npm install
+```
 
 ## Running
-
-Start backend:
-
+### Local Development
+Start the backend:
+```bash
 cd server
 node index.js
-
-Start frontend:
-
+```
+Start the frontend:
+```bash
 cd client
 npm run dev
+```
 
-Open:
+### Docker (Optional)
+If you have Docker installed, you can launch the entire stack with:
+```bash
+docker compose up --build
+```
 
-http://localhost:5173
-- Or whatever localhost the frontend terminal shows
-
-## Notes
-
-This project runs locally. Downloaded files are processed on your own machine and are not uploaded anywhere.
-
-Users are responsible for ensuring they have permission to download and convert content.
+## Security & Privacy
+This application processes media locally. Input validation and security middleware are implemented to protect against common web vulnerabilities.
