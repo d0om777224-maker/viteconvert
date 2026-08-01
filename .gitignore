@@ -4,11 +4,12 @@
 # Ignore all log files
 *.log
 
+# Ignore dependencies
+node_modules/
+
 # Ignore build output
 dist/
-
-# Ignore node_modules
-node_modules/
+client/dist/
 
 # Ignore temp files
 server/temp/
@@ -18,3 +19,15 @@ server/temp/
 
 # Ignore editor settings
 .vscode/
+
+# Ignore converted/downloaded media
+server/*.mp4
+server/*.webm
+server/*.m4a
+
+# Ignore generated conversion files without extensions
+server/[0-9a-fA-F]*
+
+# Ignore bundled binaries
+server/bin/ffmpeg
+server/bin/yt-dlp
