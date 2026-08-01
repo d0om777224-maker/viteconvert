@@ -2,7 +2,18 @@ const { exec, spawn } = require("child_process");
 const path = require("path");
 const fs = require("fs");
 
+const logger = require('./logger');
+
 const ytDlpPath = path.join(__dirname, "../bin/yt-dlp");
+
+// Safe path joining with validation
+function safeJoin(basePath, subPath) {
+  const normalizedPath = path.normalize(subPath);
+  if (normalizedPath.includes('..') || path.isAbsolute(normalizedPath)) {
+    throw new Error('Invalid path: Attempted directory traversal');
+  }
+  return path.join(basePath, normalizedPath);
+}
 
 function getDuration(url) {
   return new Promise((resolve, reject) => {
@@ -53,7 +64,7 @@ function downloadVideo(url, jobId, quality, onProgress) {
       fs.mkdirSync(tempDir, { recursive: true });
     }
 
-    const downloadedFilePath = path.join(
+    const downloadedFilePath = safeJoin(
       tempDir,
       `${jobId}.%(ext)s`
     );
@@ -75,7 +86,7 @@ function downloadVideo(url, jobId, quality, onProgress) {
     process.stdout.on("data", (data) => {
       const output = data.toString();
 
-      console.log(`yt-dlp: ${output}`);
+      logger.info(`yt-dlp: ${output}`);
 
       const match = output.match(/(\d+\.\d+)%/);
 
@@ -86,7 +97,7 @@ function downloadVideo(url, jobId, quality, onProgress) {
 
 
     process.stderr.on("data", (data) => {
-      console.log(`yt-dlp error: ${data.toString()}`);
+      logger.error(`yt-dlp error: ${data.toString()}`);
     });
 
 

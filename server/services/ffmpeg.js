@@ -1,5 +1,5 @@
 const ffmpeg = require('fluent-ffmpeg');
-const path = require('path');
+const logger = require('./logger');
 
 function convertToFormat(inputPath, outputPath, format, onProgress) {
   return new Promise((resolve, reject) => {
@@ -10,7 +10,7 @@ function convertToFormat(inputPath, outputPath, format, onProgress) {
     
     const command = ffmpeg(inputPath)
       .on('progress', (progress) => {
-        console.log('FFmpeg progress:', progress);
+        logger.info(`FFmpeg progress: ${JSON.stringify(progress)}`);
         if (onProgress && !progressReported) {
           // Report 50% when conversion starts
           onProgress(50);

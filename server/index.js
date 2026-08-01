@@ -1,8 +1,9 @@
 const express = require('express');
-const path = require('path');
 const cors = require('cors');
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 
 const { downloadVideo } = require('./services/youtube');
 const { convertToFormat } = require('./services/ffmpeg');
@@ -13,45 +14,138 @@ const logger = require('./services/logger');
 
 const app = express();
 
-app.use(cors());
-app.use(express.json());
+// Security headers
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'"],
+      imgSrc: ["'self'", "data:"],
+      fontSrc: ["'self'"],
+      connectSrc: ["'self'"],
+      frameAncestors: ["'none'"],
+      objectSrc: ["'none'"]
+    }
+  }
+}));
+
+// Enhanced CORS
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  credentials: true,
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['Content-Length', 'X-Request-ID']
+}));
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: 'Too many requests from this IP, please try again later.'
+});
+
+app.use('/api/', limiter);
+app.use(express.json({ limit: '10mb' }));
 
 const PORT = config.PORT;
 
 const jobs = {};
 
 
+// Enhanced validation functions
+const validationUtils = {
+  // Strict URL validation
+  validateYouTubeUrl: (url) => {
+    const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\//;
+    if (!youtubeRegex.test(url)) {
+      throw new Error('Invalid YouTube URL format');
+    }
+    
+    // Path traversal prevention
+    if (url.includes('..') || 
+        (url.includes('?') && !url.includes('youtube.com/watch')) ||
+        url.includes('#')) {
+      throw new Error('URL contains potentially malicious characters');
+    }
+    
+    // URL length check
+    if (url.length > 2048) {
+      throw new Error('URL too long');
+    }
+    
+    // Character encoding check
+    try {
+      decodeURIComponent(url);
+    } catch (e) {
+      throw new Error('Invalid URL encoding');
+    }
+    
+    return url;
+  },
+  
+  // Safe file path validation
+  safePath: (basePath, subPath) => {
+    const path = require('path');
+    
+    // Normalize and resolve path
+    const normalized = path.normalize(subPath);
+    
+    // Prevent directory traversal
+    if (normalized.startsWith('..') || 
+        path.isAbsolute(normalized) ||
+        normalized.includes('\\')) {
+      throw new Error('Invalid path: Directory traversal attempt detected');
+    }
+    
+    return path.join(basePath, normalized);
+  },
+  
+  // Sanitize job ID
+  validateJobId: (jobId) => {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(jobId)) {
+      throw new Error('Invalid job ID format');
+    }
+    return jobId;
+  }
+};
+
 // Start conversion
 app.post('/api/convert', (req, res) => {
-  logger.info("Conversion request:", req.body);
-  let { url, format = 'mp4', quality = 'best' } = req.body;
+  try {
+    const validatedUrl = validationUtils.validateYouTubeUrl(req.body.url);
+    logger.info("Conversion request:", req.body);
+    let { url = validatedUrl, format = 'mp4', quality = 'best' } = req.body;
 
-  if (format === 'mp3') {
-    quality = 'audio';
-  }
+    if (format === 'mp3') {
+      quality = 'audio';
+    }
 
-  if (!url) {
-    return res.status(400).json({ error: 'URL required' });
-  }
+    const jobId = uuidv4();
 
-  const jobId = uuidv4();
+    jobs[jobId] = {
+      id: jobId,
+      url: validatedUrl,
+      format,
+      quality,
+      progress: 0,
+      status: 'Queued...',
+      complete: false,
+      error: null,
+      filePath: null,
+      originalFilePath: null
+    };
 
-  jobs[jobId] = {
-    id: jobId,
-    url,
-    format,
-    quality,
-    progress: 0,
-    status: 'Queued...',
-    complete: false,
-    error: null,
-    filePath: null,
-    originalFilePath: null
-  };
-
-  addToQueue(jobId, processJob);
+    addToQueue(jobId, processJob);
 
   res.json({ jobId });
+  } catch (error) {
+    return res.status(400).json({ error: error.message });
+  }
 });
 
 
@@ -113,7 +207,7 @@ app.get('/api/download/:jobId', (req, res) => {
     return res.status(404).json({ error: 'File not ready' });
   }
 
-  console.log("Sending file:", job.filePath);
+  logger.info("Sending file:", job.filePath);
 
   res.download(
     job.filePath,
@@ -186,7 +280,7 @@ async function processJob(jobId) {
     setTimeout(() => {
       cleanupJobFiles(job);
       delete jobs[jobId];
-      console.log(`Cleaned up job: ${jobId}`);
+      logger.info(`Cleaned up job: ${jobId}`);
     }, config.CLEANUP_DELAY_MS);
 
 
@@ -205,5 +299,5 @@ async function processJob(jobId) {
 
 
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  logger.info(`Server running on port ${PORT}`);
 });
