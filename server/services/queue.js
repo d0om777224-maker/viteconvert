@@ -18,4 +18,23 @@ function addToQueue(jobId, processCallback) {
   processNext(processCallback);
 }
 // ...
+/**
+ * Checks if we can process the next job in the queue.
+ */
+async function processNext(processCallback) {
+  if (isProcessing || queue.length === 0) return;
+
+  isProcessing = true;
+  const jobId = queue.shift();
+
+  try {
+    await processCallback(jobId);
+  } catch (err) {
+    console.error(`Error processing job ${jobId} from queue:`, err);
+  } finally {
+    isProcessing = false;
+    processNext(processCallback);
+  }
+}
+
 module.exports = { addToQueue, getQueuePosition };
