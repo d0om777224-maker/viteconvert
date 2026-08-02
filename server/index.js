@@ -9,8 +9,8 @@ const multer = require('multer');
 
 const { downloadVideo } = require('./services/youtube');
 const { convertToFormat } = require('./services/ffmpeg');
-const { cleanupJobFiles } = require('./services/cleanup');
-const { addToQueue, getQueuePosition } = require('./services/queue');
+const { cleanupJobFiles, performStartupCleanup } = require('./services/cleanup');
+const { addToQueue, getQueuePosition, getQueueStatus } = require('./services/queue');
 const config = require('./config');
 const logger = require('./services/logger');
 
@@ -236,12 +236,28 @@ app.get('/api/download/:jobId', (req, res) => {
     return res.status(404).json({ error: 'File not ready' });
   }
 
+  // Update last access time on download
+  job.lastAccess = Date.now();
+
   logger.info("Sending file:", job.filePath);
 
   res.download(
     job.filePath,
-    path.basename(job.filePath)
+    path.basename(job.filePath),
+    (err) => {
+      if (err) {
+        logger.error(`Download error for ${req.params.jobId}:`, err);
+      }
+    }
   );
+});
+
+// System Status
+app.get('/api/system/status', (req, res) => {
+  res.json({
+    queue: getQueueStatus(),
+    activeJobs: Object.keys(jobs).length
+  });
 });
 
 // Serve static files from the 'public' directory
@@ -289,7 +305,8 @@ async function processJob(jobId) {
     job.status = 'Converting...';
     logger.info(`Converting to ${job.format}. Output path: ${outputFilePath}`);
 
-    await convertToFormat(
+    // Create the conversion task with a kill mechanism
+    const conversionTask = convertToFormat(
       downloadedFilePath,
       outputFilePath,
       job.format,
@@ -305,21 +322,37 @@ async function processJob(jobId) {
       }
     );
 
+    // Watchdog timer (e.g., 20 minutes)
+    const timeout = setTimeout(() => {
+      conversionTask.kill();
+      logger.error(`Watchdog: Conversion for job ${jobId} timed out`);
+    }, 20 * 60 * 1000);
+
+    // Wait for conversion
+    await conversionTask.promise;
+    clearTimeout(timeout);
 
     job.filePath = outputFilePath;
     job.progress = 100;
     job.status = 'Complete!';
     job.complete = true;
 
-
     logger.info(`Job ${jobId} finished: ${outputFilePath}`);
 
-
-    // Cleanup after 10 minutes
-    setTimeout(() => {
-      cleanupJobFiles(job);
-      delete jobs[jobId];
-      logger.info(`Cleaned up job: ${jobId}`);
+    // Cleanup logic with grace period check
+    setTimeout(function checkAndCleanup() {
+      const GRACE_PERIOD = 5 * 60 * 1000; // 5 minutes
+      const now = Date.now();
+      const lastAccess = job.lastAccess || now - GRACE_PERIOD;
+      
+      if (now - lastAccess >= GRACE_PERIOD) {
+        cleanupJobFiles(job);
+        delete jobs[jobId];
+        logger.info(`Cleaned up job: ${jobId}`);
+      } else {
+        // Re-check after remaining time
+        setTimeout(checkAndCleanup, GRACE_PERIOD - (now - lastAccess));
+      }
     }, config.CLEANUP_DELAY_MS);
 
 
@@ -349,7 +382,7 @@ async function processUploadJob(jobId) {
     job.status = 'Converting...';
     logger.info(`Converting to ${job.format}. Output path: ${outputFilePath}`);
 
-    await convertToFormat(
+    const conversionTask = convertToFormat(
       job.originalFilePath,
       outputFilePath,
       job.format,
@@ -362,15 +395,34 @@ async function processUploadJob(jobId) {
       }
     );
 
+    // Watchdog timer
+    const timeout = setTimeout(() => {
+      conversionTask.kill();
+      logger.error(`Watchdog: Upload job ${jobId} conversion timed out`);
+    }, 20 * 60 * 1000);
+
+    await conversionTask.promise;
+    clearTimeout(timeout);
+
     job.filePath = outputFilePath;
     job.progress = 100;
     job.status = 'Complete!';
     job.complete = true;
 
     // Cleanup after 10 minutes
-    setTimeout(() => {
-      cleanupJobFiles(job);
-      delete jobs[jobId];
+    setTimeout(function checkAndCleanup() {
+      const GRACE_PERIOD = 5 * 60 * 1000; // 5 minutes
+      const now = Date.now();
+      const lastAccess = job.lastAccess || now - GRACE_PERIOD;
+      
+      if (now - lastAccess >= GRACE_PERIOD) {
+        cleanupJobFiles(job);
+        delete jobs[jobId];
+        logger.info(`Cleaned up job: ${jobId}`);
+      } else {
+        // Re-check after remaining time
+        setTimeout(checkAndCleanup, GRACE_PERIOD - (now - lastAccess));
+      }
     }, config.CLEANUP_DELAY_MS);
     
   } catch (error) {
@@ -383,6 +435,7 @@ async function processUploadJob(jobId) {
 }
 
 if (require.main === module) {
+  performStartupCleanup();
   app.listen(PORT, () => {
     logger.info(`Server running on port ${PORT}`);
   });

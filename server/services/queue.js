@@ -11,6 +11,17 @@ function getQueuePosition(jobId) {
 }
 
 /**
+ * Returns the current state of the queue.
+ */
+function getQueueStatus() {
+  return {
+    pending: queue.length,
+    isProcessing: isProcessing,
+    queue: [...queue]
+  };
+}
+
+/**
  * Adds a job ID to the queue and triggers processing.
  */
 function addToQueue(jobId, processCallback) {
@@ -37,4 +48,4 @@ async function processNext(processCallback) {
   }
 }
 
-module.exports = { addToQueue, getQueuePosition };
+module.exports = { addToQueue, getQueuePosition, getQueueStatus };
