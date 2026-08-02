@@ -11,6 +11,7 @@ const { downloadVideo } = require('./services/youtube');
 const { convertToFormat } = require('./services/ffmpeg');
 const { cleanupJobFiles, performStartupCleanup } = require('./services/cleanup');
 const { addToQueue, getQueuePosition, getQueueStatus } = require('./services/queue');
+const { authorize } = require('./middleware/auth');
 const config = require('./config');
 const logger = require('./services/logger');
 
@@ -119,18 +120,10 @@ const validationUtils = {
 };
 
 // Start conversion
-app.post('/api/convert', (req, res) => {
+app.post('/api/convert', authorize, (req, res) => {
   try {
     const validatedUrl = validationUtils.validateYouTubeUrl(req.body.url);
-    logger.info("Conversion request:", req.body);
-    let { url = validatedUrl, format = 'mp4', quality = 'best' } = req.body;
-
-    if (format === 'mp3') {
-      quality = 'audio';
-    }
-
-    const jobId = uuidv4();
-
+// ... existing code ...
     jobs[jobId] = {
       id: jobId,
       url: validatedUrl,
@@ -153,25 +146,14 @@ app.post('/api/convert', (req, res) => {
 });
 
 // Upload conversion
-app.post('/api/upload', upload.single('file'), (req, res) => {
+app.post('/api/upload', authorize, upload.single('file'), (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No file uploaded' });
   }
 
   const { format = 'mp3' } = req.body;
   const jobId = uuidv4();
-
-  jobs[jobId] = {
-    id: jobId,
-    format,
-    progress: 0,
-    status: 'Queued...',
-    complete: false,
-    error: null,
-    filePath: null,
-    originalFilePath: req.file.path
-  };
-
+// ... existing code ...
   addToQueue(jobId, processUploadJob);
 
   res.json({ jobId });
@@ -253,7 +235,7 @@ app.get('/api/download/:jobId', (req, res) => {
 });
 
 // System Status
-app.get('/api/system/status', (req, res) => {
+app.get('/api/system/status', authorize, (req, res) => {
   res.json({
     queue: getQueueStatus(),
     activeJobs: Object.keys(jobs).length
