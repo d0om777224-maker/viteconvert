@@ -17,6 +17,24 @@ export async function startConversion(url, format, quality) {
   return response.json(); // returns { jobId }
 }
 
+export async function uploadAndConvert(file, format) {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('format', format);
+
+  const response = await fetch(`${API_BASE_URL}/api/upload`, {
+    method: 'POST',
+    body: formData
+  });
+
+  if (!response.ok) {
+    const data = await response.json();
+    throw new Error(data.error || "Failed to start upload conversion");
+  }
+
+  return response.json(); // returns { jobId }
+}
+
 export function subscribeToProgress(jobId, onUpdate, onError) {
   const eventSource = new EventSource(`${API_BASE_URL}/api/progress/${jobId}`);
 

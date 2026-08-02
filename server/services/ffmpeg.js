@@ -26,19 +26,28 @@ function convertToFormat(inputPath, outputPath, format, onProgress) {
 
     // Configure output based on format
     if (format === 'mp3') {
-      command
-        .noVideo()
-        .audioCodec('libmp3lame')
-        .audioBitrate('192k')
-        .saveToFile(outputPath);
+      command.noVideo().audioCodec('libmp3lame').audioBitrate('192k');
+    } else if (format === 'wav') {
+      command.noVideo().audioCodec('pcm_s16le');
+    } else if (format === 'aac') {
+      command.noVideo().audioCodec('aac').audioBitrate('192k');
+    } else if (format === 'flac') {
+      command.noVideo().audioCodec('flac');
+    } else if (format === 'm4a') {
+      command.noVideo().audioCodec('aac').format('m4a').audioBitrate('192k');
+    } else if (format === 'mp4') {
+      command.videoCodec('libx264').audioCodec('aac').videoBitrate('1000k');
+    } else if (format === 'mov') {
+      command.videoCodec('libx264').audioCodec('aac').format('mov');
+    } else if (format === 'mkv') {
+      command.videoCodec('libx264').audioCodec('aac').format('matroska');
+    } else if (format === 'avi') {
+      command.videoCodec('libx264').audioCodec('aac').format('avi');
     } else {
-      // Default to MP4 video format
-      command
-        .videoCodec('libx264')
-        .audioCodec('aac')
-        .videoBitrate('1000k')
-        .saveToFile(outputPath);
+      command.videoCodec('libx264').audioCodec('aac').videoBitrate('1000k');
     }
+
+    command.saveToFile(outputPath);
   });
 }
 

@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ProgressBar from './components/ProgressBar';
 import StatusMessage from './components/StatusMessage';
-import { startConversion, subscribeToProgress } from './services/api';
+import ConverterBox from './components/ConverterBox';
+import { startConversion, uploadAndConvert, subscribeToProgress } from './services/api';
 
 function App() {
   const [youtubeUrl, setYoutubeUrl] = useState('');
@@ -12,6 +13,8 @@ function App() {
   const [statusMessage, setStatusMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [downloadJobId, setDownloadJobId] = useState(null);
+  const [activeTab, setActiveTab] = useState('youtube');
+  const [darkMode, setDarkMode] = useState(true);
 
   const unsubscribeRef = useRef(null);
 
@@ -30,7 +33,7 @@ function App() {
   const handleFormatChange = (event) => {
     const format = event.target.value;
     setSelectedFormat(format);
-    if (format === 'mp3') {
+    if (format === 'mp3' || format === 'wav') {
       setSelectedQuality('audio');
     } else {
       setSelectedQuality('best');
@@ -57,125 +60,148 @@ function App() {
 
     try {
       const { jobId } = await startConversion(youtubeUrl, selectedFormat, selectedQuality);
-
-      unsubscribeRef.current = subscribeToProgress(
-        jobId,
-        (data) => {
-          setDownloadProgress(data.progress);
-          setStatusMessage(data.status);
-
-          if (data.complete) {
-            setIsConverting(false);
-            setDownloadJobId(data.jobId);
-            setStatusMessage('Conversion complete! Ready for download.');
-          }
-
-          if (data.error) {
-            setErrorMessage(data.error);
-            setIsConverting(false);
-          }
-        },
-        (err) => {
-          setErrorMessage(err);
-          setIsConverting(false);
-        }
-      );
+      startProgressSubscription(jobId);
     } catch (err) {
       setErrorMessage(err.message);
       setIsConverting(false);
     }
   };
 
-  return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-900 p-4">
-      <div className="w-full max-w-lg bg-gray-800 rounded-xl shadow-2xl p-6 sm:p-8">
+  const handleFileUpload = async (file, format) => {
+    setIsConverting(true);
+    setDownloadProgress(0);
+    setStatusMessage('Uploading and converting...');
+    setErrorMessage('');
+    setDownloadJobId(null);
 
-        <h1 className="text-3xl font-bold text-center mb-2 text-gray-200">
+    try {
+      const { jobId } = await uploadAndConvert(file, format);
+      startProgressSubscription(jobId);
+    } catch (err) {
+      setErrorMessage(err.message);
+      setIsConverting(false);
+    }
+  };
+
+  const startProgressSubscription = (jobId) => {
+    unsubscribeRef.current = subscribeToProgress(
+      jobId,
+      (data) => {
+        setDownloadProgress(data.progress);
+        setStatusMessage(data.status);
+
+        if (data.complete) {
+          setIsConverting(false);
+          setDownloadJobId(data.jobId);
+          setStatusMessage('Conversion complete! Ready for download.');
+        }
+
+        if (data.error) {
+          setErrorMessage(data.error);
+          setIsConverting(false);
+        }
+      },
+      (err) => {
+        setErrorMessage(err);
+        setIsConverting(false);
+      }
+    );
+  };
+
+  return (
+    <div className={`${darkMode ? 'dark' : ''}`}>
+      <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900 p-4 transition-colors duration-300">
+        <div className="w-full max-w-lg bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-6 sm:p-8 transition-colors duration-300 relative">
+          
+          <button 
+            onClick={() => setDarkMode(!darkMode)}
+            className="absolute top-4 right-4 p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200"
+          >
+            {darkMode ? '☀️' : '🌙'}
+          </button>
+
+        <h1 className="text-3xl font-bold text-center mb-2 text-gray-900 dark:text-gray-200">
           ViteConvert
         </h1>
 
-        <p className="text-center text-gray-400 mb-6">
-          Convert YouTube videos to MP3 or MP4 with ease.
-        </p>
-
-        <div className="mb-4">
-          <label
-            htmlFor="youtube-url"
-            className="block text-lg font-medium text-gray-300 mb-2"
+        <div className="flex justify-center mb-6">
+          <button
+            onClick={() => setActiveTab('youtube')}
+            className={`px-4 py-2 ${activeTab === 'youtube' ? 'text-blue-500 border-b-2 border-blue-500' : 'text-gray-500'}`}
           >
-            YouTube URL
-          </label>
-
-          <input
-            type="url"
-            id="youtube-url"
-            value={youtubeUrl}
-            onChange={handleUrlChange}
-            placeholder="https://www.youtube.com/watch?v=..."
-            className="w-full px-4 py-3 rounded-lg bg-gray-700 text-gray-200 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            disabled={isConverting}
-          />
+            YouTube
+          </button>
+          <button
+            onClick={() => setActiveTab('upload')}
+            className={`px-4 py-2 ${activeTab === 'upload' ? 'text-blue-500 border-b-2 border-blue-500' : 'text-gray-500'}`}
+          >
+            File Upload
+          </button>
         </div>
 
-        <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-center sm:space-x-6">
+        {activeTab === 'youtube' && (
+          <>
+            <p className="text-center text-gray-600 dark:text-gray-400 mb-6">
+              Convert YouTube videos to MP3 or MP4 with ease.
+            </p>
 
-          <div className="flex items-center mb-2 sm:mb-0">
-            <input
-              type="radio"
-              id="format-mp3"
-              name="format"
-              value="mp3"
-              checked={selectedFormat === 'mp3'}
-              onChange={handleFormatChange}
-              disabled={isConverting}
-              className="form-radio h-5 w-5 text-blue-600"
-            />
+            <div className="mb-4">
+              <label
+                htmlFor="youtube-url"
+                className="block text-lg font-medium text-gray-700 dark:text-gray-300 mb-2"
+              >
+                YouTube URL
+              </label>
 
-            <label
-              htmlFor="format-mp3"
-              className="ml-2 text-gray-300"
-            >
-              MP3
-            </label>
-          </div>
+              <input
+                type="url"
+                id="youtube-url"
+                value={youtubeUrl}
+                onChange={handleUrlChange}
+                placeholder="https://www.youtube.com/watch?v=..."
+                className="w-full px-4 py-3 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-200 border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={isConverting}
+              />
+            </div>
 
-          <div className="flex items-center">
-            <input
-              type="radio"
-              id="format-mp4"
-              name="format"
-              value="mp4"
-              checked={selectedFormat === 'mp4'}
-              onChange={handleFormatChange}
-              disabled={isConverting}
-              className="form-radio h-5 w-5 text-blue-600"
-            />
+            <div className="mb-4">
+              <label className="block text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Format
+              </label>
+              <select
+                value={selectedFormat}
+                onChange={handleFormatChange}
+                disabled={isConverting}
+                className="w-full px-4 py-3 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-200 border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="mp3">MP3 (Audio)</option>
+                <option value="wav">WAV (Audio - Lossless)</option>
+                <option value="mp4">MP4 (Video)</option>
+                <option value="webm">WebM (Video)</option>
+              </select>
+            </div>
+            
+            {['mp4', 'webm'].includes(selectedFormat) && (
+              <div className="mb-6">
+                <label className="block text-gray-700 dark:text-gray-300 mb-2">Quality</label>
+                <select
+                  value={selectedQuality}
+                  onChange={handleQualityChange}
+                  disabled={isConverting}
+                  className="w-full px-4 py-2 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-200 border border-gray-300 dark:border-gray-600"
+                >
+                  <option value="best">Best Quality</option>
+                  <option value="1080">1080p</option>
+                  <option value="720">720p</option>
+                  <option value="480">480p</option>
+                </select>
+              </div>
+            )}
+          </>
+        )}
 
-            <label
-              htmlFor="format-mp4"
-              className="ml-2 text-gray-300"
-            >
-              MP4
-            </label>
-          </div>
-
-        </div>
-        
-        {selectedFormat === 'mp4' && (
-          <div className="mb-6">
-            <label className="block text-gray-300 mb-2">Quality</label>
-            <select
-              value={selectedQuality}
-              onChange={handleQualityChange}
-              disabled={isConverting}
-              className="w-full px-4 py-2 rounded-lg bg-gray-700 text-gray-200 border border-gray-600"
-            >
-              <option value="best">Best Quality</option>
-              <option value="1080">1080p</option>
-              <option value="720">720p</option>
-              <option value="480">480p</option>
-            </select>
-          </div>
+        {activeTab === 'upload' && (
+          <ConverterBox onConvert={handleFileUpload} isConverting={isConverting} />
         )}
 
         {errorMessage && (
@@ -191,7 +217,7 @@ function App() {
             Download File
           </a>
 
-        ) : (
+        ) : activeTab === 'youtube' && (
 
           <button
             onClick={handleDownloadClick}
@@ -251,6 +277,7 @@ function App() {
 
       </div>
     </div>
+  </div>
   );
 }
 

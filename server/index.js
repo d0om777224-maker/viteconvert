@@ -5,6 +5,7 @@ const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const multer = require('multer');
 
 const { downloadVideo } = require('./services/youtube');
 const { convertToFormat } = require('./services/ffmpeg');
@@ -14,6 +15,8 @@ const config = require('./config');
 const logger = require('./services/logger');
 
 const app = express();
+
+const upload = multer({ dest: 'temp/' });
 
 // Security headers
 app.use(helmet({
@@ -149,6 +152,31 @@ app.post('/api/convert', (req, res) => {
   }
 });
 
+// Upload conversion
+app.post('/api/upload', upload.single('file'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file uploaded' });
+  }
+
+  const { format = 'mp3' } = req.body;
+  const jobId = uuidv4();
+
+  jobs[jobId] = {
+    id: jobId,
+    format,
+    progress: 0,
+    status: 'Queued...',
+    complete: false,
+    error: null,
+    filePath: null,
+    originalFilePath: req.file.path
+  };
+
+  addToQueue(jobId, processUploadJob);
+
+  res.json({ jobId });
+});
+
 
 // SSE progress
 app.get('/api/progress/:jobId', (req, res) => {
@@ -252,7 +280,7 @@ async function processJob(jobId) {
 
 
     job.status = 'Converting...';
-
+    logger.info(`Converting to ${job.format}. Output path: ${outputFilePath}`);
 
     await convertToFormat(
       downloadedFilePath,
@@ -301,6 +329,51 @@ async function processJob(jobId) {
   }
 }
 
+async function processUploadJob(jobId) {
+  const job = jobs[jobId];
+  if (!job) return;
+
+  try {
+    const outputFilePath = path.join(
+      path.dirname(job.originalFilePath),
+      `${jobId}_converted.${job.format}`
+    );
+
+    job.status = 'Converting...';
+    logger.info(`Converting to ${job.format}. Output path: ${outputFilePath}`);
+
+    await convertToFormat(
+      job.originalFilePath,
+      outputFilePath,
+      job.format,
+      (progress) => {
+        const newProgress = Math.min(100, Math.round(progress));
+        if (newProgress > job.progress) {
+          job.progress = newProgress;
+        }
+        job.status = `Converting: ${job.progress}%`;
+      }
+    );
+
+    job.filePath = outputFilePath;
+    job.progress = 100;
+    job.status = 'Complete!';
+    job.complete = true;
+
+    // Cleanup after 10 minutes
+    setTimeout(() => {
+      cleanupJobFiles(job);
+      delete jobs[jobId];
+    }, config.CLEANUP_DELAY_MS);
+    
+  } catch (error) {
+    logger.error(`Upload job ${jobId} failed:`, error);
+    job.error = error.message;
+    job.status = 'Error';
+    cleanupJobFiles(job);
+    delete jobs[jobId];
+  }
+}
 
 if (require.main === module) {
   app.listen(PORT, () => {
