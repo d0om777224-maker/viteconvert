@@ -244,6 +244,13 @@ app.get('/api/download/:jobId', (req, res) => {
   );
 });
 
+// Serve static files from the 'public' directory
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Catch-all route to serve the React app (index.html)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
 // Processing pipeline
 async function processJob(jobId) {

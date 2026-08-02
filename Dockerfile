@@ -19,6 +19,7 @@ COPY server/ .
 
 # Copy built frontend into the server's public folder
 COPY --from=frontend-build /app/client/dist ./public
+RUN ls -la /app/public 
 
 EXPOSE 3001
 CMD ["node", "index.js"]
