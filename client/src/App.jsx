@@ -175,15 +175,29 @@ function App() {
               <p className="text-gray-500 dark:text-gray-400 text-center py-10">No active conversions.</p>
             ) : (
               <div className="space-y-4">
-                {Object.entries(jobs).map(([id, job]) => (
-                  <div key={id} className="p-3 border dark:border-gray-700 rounded-lg">
-                    <ProgressBar value={job.progress} isLoading={!job.complete && !job.error} />
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{job.status}</p>
-                    {job.complete && (
-                    <a href={`/api/download/${id}`} className="block text-center mt-2 py-1 text-sm bg-green-600 text-white rounded">Download</a>
-                    )}
-                  </div>
-                ))}
+                {Object.entries(jobs).map(([id, job]) => {
+                  const getStatusColor = (status) => {
+                    if (status.includes('Error')) return 'text-red-500 bg-red-100 dark:bg-red-900/20';
+                    if (status.includes('Complete')) return 'text-green-500 bg-green-100 dark:bg-green-900/20';
+                    return 'text-blue-500 bg-blue-100 dark:bg-blue-900/20';
+                  };
+
+                  return (
+                    <div key={id} className="p-4 border dark:border-gray-700 rounded-lg">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className={`text-xs font-bold px-2 py-1 rounded ${getStatusColor(job.status)}`}>
+                          {job.status}
+                        </span>
+                      </div>
+                      <ProgressBar value={job.progress} isLoading={!job.complete && !job.error} />
+                      {job.complete && (
+                        <a href={`/api/download/${id}`} className="block text-center mt-3 py-2 text-sm font-bold bg-green-600 hover:bg-green-700 text-white rounded transition shadow-sm">
+                          Download File
+                        </a>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

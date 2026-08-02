@@ -1,14 +1,24 @@
 const ffmpeg = require('fluent-ffmpeg');
 const logger = require('./logger');
+const path = require('path');
 
 function convertToFormat(inputPath, outputPath, format, onProgress) {
   return new Promise((resolve, reject) => {
+    // Validate format vs extension
+    const extension = path.extname(outputPath).toLowerCase().replace('.', '');
+    if (extension !== format.toLowerCase()) {
+      return reject(new Error(`Security Error: Output extension mismatch for format: ${format}`));
+    }
+
     let progressReported = false;
     
     // Set FFmpeg executable path for Node.js process
     const ffmpegPath = require('ffmpeg-static');
     
     const command = ffmpeg(inputPath)
+      .setFfmpegPath(ffmpegPath)
+      .timeout(900)
+      .native()
       .on('progress', (progress) => {
         logger.info(`FFmpeg progress: ${JSON.stringify(progress)}`);
         if (onProgress && progress.percent) {
