@@ -233,8 +233,10 @@ async function processJob(jobId) {
       jobId,
       job.quality,
       (progress) => {
-
-        job.progress = Math.round(progress * 0.75);
+        const newProgress = Math.round(progress * 0.20);
+        if (newProgress > job.progress) {
+          job.progress = newProgress;
+        }
         job.status = `Downloading: ${job.progress}%`;
       }
     );
@@ -257,12 +259,13 @@ async function processJob(jobId) {
       outputFilePath,
       job.format,
       (progress) => {
-
-        job.progress = Math.min(
+        const newProgress = Math.min(
           100,
-          Math.round(75 + progress * 0.25)
+          Math.round(20 + progress * 0.80)
         );
-
+        if (newProgress > job.progress) {
+          job.progress = newProgress;
+        }
         job.status = `Converting: ${job.progress}%`;
       }
     );

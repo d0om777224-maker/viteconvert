@@ -11,10 +11,8 @@ function convertToFormat(inputPath, outputPath, format, onProgress) {
     const command = ffmpeg(inputPath)
       .on('progress', (progress) => {
         logger.info(`FFmpeg progress: ${JSON.stringify(progress)}`);
-        if (onProgress && !progressReported) {
-          // Report 50% when conversion starts
-          onProgress(50);
-          progressReported = true;
+        if (onProgress && progress.percent) {
+          onProgress(progress.percent);
         }
       })
       .on('error', (err) => {
