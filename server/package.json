@@ -7,7 +7,14 @@
     "start": "node index.js",
     "test": "jest"
   },
-  "jest": {},
+  "jest": {
+    "transform": {
+      "^.+\\.[t|j]sx?$": "babel-jest"
+    },
+    "transformIgnorePatterns": [
+      "/node_modules/(?!uuid)"
+    ]
+  },
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^4.18.2",
@@ -16,10 +23,13 @@
     "fluent-ffmpeg": "^2.1.2",
     "helmet": "^8.3.0",
     "multer": "^2.2.0",
-    "uuid": "^8.3.2",
+    "uuid": "^11.1.1",
     "winston": "^3.19.0"
   },
   "devDependencies": {
+    "@babel/core": "^8.0.1",
+    "@babel/preset-env": "^8.0.2",
+    "babel-jest": "^30.4.1",
     "jest": "^30.4.2",
     "supertest": "^7.2.2"
   }

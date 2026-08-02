@@ -16,6 +16,7 @@ describe('POST /api/convert', () => {
   it('should reject invalid URLs', async () => {
     const res = await request(app)
       .post('/api/convert')
+      .set('X-API-KEY', 'dev-local-key')
       .send({ url: 'not-a-valid-url' });
     
     expect(res.statusCode).toEqual(400);
@@ -25,6 +26,7 @@ describe('POST /api/convert', () => {
   it('should accept valid YouTube URLs', async () => {
     const res = await request(app)
       .post('/api/convert')
+      .set('X-API-KEY', 'dev-local-key')
       .send({ url: 'https://www.youtube.com/watch?v=validId' });
     
     expect(res.statusCode).toEqual(200);

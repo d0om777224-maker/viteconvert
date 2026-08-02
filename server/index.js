@@ -45,15 +45,16 @@ app.use(cors({
 }));
 
 // Rate limiting
+// Global rate limiter
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: 200, 
   standardHeaders: true,
   legacyHeaders: false,
   message: 'Too many requests from this IP, please try again later.'
 });
 
-app.use('/api/', limiter);
+app.use(limiter);
 app.use(express.json({ limit: '10mb' }));
 
 const PORT = config.PORT;
@@ -123,7 +124,17 @@ const validationUtils = {
 app.post('/api/convert', authorize, (req, res) => {
   try {
     const validatedUrl = validationUtils.validateYouTubeUrl(req.body.url);
-// ... existing code ...
+    logger.info("Conversion request:", req.body);
+    
+    let format = req.body.format || 'mp4';
+    let quality = req.body.quality || 'best';
+
+    if (format === 'mp3') {
+      quality = 'audio';
+    }
+
+    const jobId = uuidv4();
+
     jobs[jobId] = {
       id: jobId,
       url: validatedUrl,
@@ -161,7 +172,7 @@ app.post('/api/upload', authorize, upload.single('file'), (req, res) => {
 
 
 // SSE progress
-app.get('/api/progress/:jobId', (req, res) => {
+app.get('/api/progress/:jobId', authorize, (req, res) => {
   const { jobId } = req.params;
   const job = jobs[jobId];
 
