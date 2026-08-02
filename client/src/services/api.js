@@ -1,4 +1,4 @@
-const API_BASE_URL = "http://localhost:3001";
+const API_BASE_URL = "";
 
 export async function startConversion(url, format, quality) {
   const response = await fetch(`${API_BASE_URL}/api/convert`, {

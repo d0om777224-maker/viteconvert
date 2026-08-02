@@ -176,7 +176,7 @@ function App() {
                     <ProgressBar value={job.progress} isLoading={!job.complete && !job.error} />
                     <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{job.status}</p>
                     {job.complete && (
-                      <a href={`http://localhost:3001/api/download/${id}`} className="block text-center mt-2 py-1 text-sm bg-green-600 text-white rounded">Download</a>
+                    <a href={`/api/download/${id}`} className="block text-center mt-2 py-1 text-sm bg-green-600 text-white rounded">Download</a>
                     )}
                   </div>
                 ))}
