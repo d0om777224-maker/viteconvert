@@ -13,6 +13,7 @@ function App() {
   const [errorMessage, setErrorMessage] = useState('');
   const [activeTab, setActiveTab] = useState('youtube');
   const [darkMode, setDarkMode] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   const unsubscribeRef = useRef({});
 
@@ -47,12 +48,15 @@ function App() {
       return;
     }
 
+    setLoading(true);
     try {
       const { jobId } = await startConversion(youtubeUrl, selectedFormat, selectedQuality);
       setJobs(prev => ({ ...prev, [jobId]: { progress: 0, status: 'Queued...', complete: false } }));
       startProgressSubscription(jobId);
     } catch (err) {
       setErrorMessage(err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -147,10 +151,10 @@ function App() {
                   </div>
                   <button
                     onClick={handleDownloadClick}
-                    disabled={!youtubeUrl}
-                    className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition"
+                    disabled={!youtubeUrl || loading}
+                    className={`w-full py-3 ${loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'} text-white font-semibold rounded-lg transition`}
                   >
-                    Convert & Download
+                    {loading ? 'Processing...' : 'Convert & Download'}
                   </button>
                 </>
               )}

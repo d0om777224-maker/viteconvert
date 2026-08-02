@@ -4,7 +4,7 @@ const fs = require("fs");
 
 const logger = require('./logger');
 
-const ytDlpPath = path.join(__dirname, "../bin/yt-dlp");
+const ytDlpPath = "yt-dlp";
 
 // Safe path joining with validation
 function safeJoin(basePath, subPath) {
