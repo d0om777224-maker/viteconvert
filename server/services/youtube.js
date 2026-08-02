@@ -17,14 +17,18 @@ function safeJoin(basePath, subPath) {
 
 function getDuration(url) {
   return new Promise((resolve, reject) => {
-    exec(`"${ytDlpPath}" --get-duration "${url}"`, (err, stdout, stderr) => {
-      if (err) return reject(stderr);
+    // Use --print duration for a clean integer result
+    exec(`${ytDlpPath} --print duration "${url}"`, (err, stdout, stderr) => {
+      if (err) {
+        logger.error(`yt-dlp duration check failed: ${stderr}`);
+        return reject(new Error("Could not validate video duration."));
+      }
       
-      const parts = stdout.trim().split(':').map(Number);
-      let seconds = 0;
-      if (parts.length === 3) seconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
-      else if (parts.length === 2) seconds = parts[0] * 60 + parts[1];
-      else seconds = parts[0];
+      const seconds = parseInt(stdout.trim(), 10);
+      if (isNaN(seconds)) {
+        logger.error(`yt-dlp returned non-numeric duration: ${stdout}`);
+        return reject(new Error("Could not parse video duration."));
+      }
       
       resolve(seconds);
     });
