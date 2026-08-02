@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import ProgressBar from './components/ProgressBar';
 import StatusMessage from './components/StatusMessage';
 import ConverterBox from './components/ConverterBox';
+import FAQ from './components/FAQ';
 import { startConversion, uploadAndConvert, subscribeToProgress } from './services/api';
 
 function App() {
@@ -106,6 +107,12 @@ function App() {
                 >
                   File Upload
                 </button>
+                <button
+                  onClick={() => setActiveTab('faq')}
+                  className={`px-4 py-2 ${activeTab === 'faq' ? 'text-blue-500 border-b-2 border-blue-500' : 'text-gray-500'}`}
+                >
+                  FAQ
+                </button>
               </div>
 
               {activeTab === 'youtube' && (
@@ -150,6 +157,10 @@ function App() {
 
               {activeTab === 'upload' && (
                 <ConverterBox onConvert={handleFileUpload} isConverting={false} />
+              )}
+
+              {activeTab === 'faq' && (
+                <FAQ />
               )}
             </div>
           </div>
