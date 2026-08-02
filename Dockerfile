@@ -9,7 +9,7 @@ RUN npm run build
 # Stage 2: Backend
 FROM node:20-slim
 # Install dependencies
-RUN apt-get update && apt-get install -y ffmpeg python3 python3-pip \
+RUN apt-get update && apt-get install -y ffmpeg python3 python3-pip nodejs \
     && pip3 install yt-dlp --upgrade --break-system-packages \
     && rm -rf /var/lib/apt/lists/*
 

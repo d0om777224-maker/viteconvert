@@ -18,8 +18,8 @@ function safeJoin(basePath, subPath) {
 
 function getDuration(url) {
   return new Promise((resolve, reject) => {
-    // Use --print duration for a clean integer result, plus user-agent to avoid 429
-    exec(`${ytDlpPath} --user-agent "${USER_AGENT}" --print duration "${url}"`, (err, stdout, stderr) => {
+    // Use --print duration for a clean integer result, plus user-agent and js-runtime to avoid 429/403
+    exec(`${ytDlpPath} --js-runtime node --user-agent "${USER_AGENT}" --print duration "${url}"`, (err, stdout, stderr) => {
       if (err) {
         logger.error(`yt-dlp duration check failed: ${stderr}`);
         return reject(new Error("Could not validate video duration."));
@@ -77,6 +77,7 @@ function downloadVideo(url, jobId, quality, onProgress) {
     const process = spawn(ytDlpPath, [
       "-f",
       getFormat(quality),
+      "--js-runtime", "node",
       "--user-agent", USER_AGENT,
       "--retries", "10",
       "--fragment-retries", "10",
