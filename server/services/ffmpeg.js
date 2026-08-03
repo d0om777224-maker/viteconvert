@@ -2,7 +2,7 @@ const ffmpeg = require('fluent-ffmpeg');
 const logger = require('./logger');
 const path = require('path');
 
-function convertToFormat(inputPath, outputPath, format, onProgress) {
+function convertToFormat(inputPath, outputPath, format, onProgress, quality = '192k') {
   let command;
   
   const promise = new Promise((resolve, reject) => {
@@ -17,7 +17,6 @@ function convertToFormat(inputPath, outputPath, format, onProgress) {
     
     command = ffmpeg(inputPath)
       .setFfmpegPath(ffmpegPath)
-      .timeout(900)
       .native()
       .on('progress', (progress) => {
         if (onProgress && progress.percent) {
@@ -35,15 +34,15 @@ function convertToFormat(inputPath, outputPath, format, onProgress) {
 
     // Configure output based on format
     if (format === 'mp3') {
-      command.noVideo().audioCodec('libmp3lame').audioBitrate('192k');
+      command.noVideo().audioCodec('libmp3lame').audioBitrate(quality);
     } else if (format === 'wav') {
       command.noVideo().audioCodec('pcm_s16le');
     } else if (format === 'aac') {
-      command.noVideo().audioCodec('aac').audioBitrate('192k');
+      command.noVideo().audioCodec('aac').audioBitrate(quality);
     } else if (format === 'flac') {
       command.noVideo().audioCodec('flac');
     } else if (format === 'm4a') {
-      command.noVideo().audioCodec('aac').format('m4a').audioBitrate('192k');
+      command.noVideo().audioCodec('aac').format('m4a').audioBitrate(quality);
     } else if (format === 'mp4') {
       command.videoCodec('libx264').audioCodec('aac').videoBitrate('1000k');
     } else if (format === 'mov') {

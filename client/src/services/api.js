@@ -1,10 +1,12 @@
 const API_BASE_URL = "";
+const API_KEY = "dev-local-key";
 
 export async function startConversion(url, format, quality) {
   const response = await fetch(`${API_BASE_URL}/api/convert`, {
     method: "POST",
     headers: {
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
+      "x-api-key": API_KEY
     },
     body: JSON.stringify({ url, format, quality })
   });
@@ -24,6 +26,7 @@ export async function uploadAndConvert(file, format) {
 
   const response = await fetch(`${API_BASE_URL}/api/upload`, {
     method: 'POST',
+    headers: { "x-api-key": API_KEY },
     body: formData
   });
 
@@ -36,7 +39,7 @@ export async function uploadAndConvert(file, format) {
 }
 
 export function subscribeToProgress(jobId, onUpdate, onError) {
-  const eventSource = new EventSource(`${API_BASE_URL}/api/progress/${jobId}`);
+  const eventSource = new EventSource(`${API_BASE_URL}/api/progress/${jobId}?x-api-key=${API_KEY}`);
 
   eventSource.onmessage = (event) => {
     const data = JSON.parse(event.data);

@@ -4,7 +4,7 @@ const fs = require("fs");
 
 const logger = require('./logger');
 
-const ytDlpPath = "yt-dlp";
+const ytDlpPath = path.join(__dirname, "../bin/yt-dlp");
 const USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
 // Safe path joining with validation
@@ -19,7 +19,7 @@ function safeJoin(basePath, subPath) {
 function getDuration(url) {
   return new Promise((resolve, reject) => {
     // Use --print duration for a clean integer result, plus user-agent to avoid 429
-    exec(`${ytDlpPath} --user-agent "${USER_AGENT}" --print duration "${url}"`, (err, stdout, stderr) => {
+    exec(`"${ytDlpPath}" --user-agent "${USER_AGENT}" --print duration "${url}"`, (err, stdout, stderr) => {
       if (err) {
         logger.error(`yt-dlp duration check failed: ${stderr}`);
         return reject(new Error("Could not validate video duration."));

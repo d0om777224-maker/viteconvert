@@ -164,7 +164,18 @@ app.post('/api/upload', authorize, upload.single('file'), (req, res) => {
 
   const { format = 'mp3' } = req.body;
   const jobId = uuidv4();
-// ... existing code ...
+
+  jobs[jobId] = {
+    id: jobId,
+    originalFilePath: req.file.path,
+    format,
+    progress: 0,
+    status: 'Queued...',
+    complete: false,
+    error: null,
+    filePath: null
+  };
+
   addToQueue(jobId, processUploadJob);
 
   res.json({ jobId });
