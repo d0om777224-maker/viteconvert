@@ -25,7 +25,7 @@ npm install
 npm install helmet express-rate-limit
 
 # Install frontend dependencies
-cd ../client
+cd client
 npm install
 ```
 
