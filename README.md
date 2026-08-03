@@ -16,7 +16,7 @@ A secure, high-performance full-stack web application that converts YouTube vide
 
 ## Installation
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/d0om777224-maker/viteconvert
 cd viteconvert
 
 # Install backend dependencies
